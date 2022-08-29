@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import ctypes, random as r, threading as thr
+import sys, ctypes, random as r, threading as thr
 tclib = ctypes.CDLL('bin/tclib.so')
 
 def _Increase(LoopNo):
@@ -25,4 +25,7 @@ def main():
     print('Thread was unsafe with {} thread(s) and {} loops'.format(thrNo, loopNo))
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)

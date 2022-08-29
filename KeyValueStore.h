@@ -1,5 +1,5 @@
-#ifndef KEYVALUESTORE__H
-#define KEYVALUESTORE__H
+#ifndef KEYVALUESTORE_H
+#define KEYVALUESTORE_H
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,6 +15,7 @@ void addressToHex(char *pBuf, uintptr_t Address);
 
 int str(char *pStr);
 
-void func(int N);
+void increase();
+int get_result();
 
 #endif

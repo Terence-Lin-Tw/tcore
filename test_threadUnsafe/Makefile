@@ -1,4 +1,4 @@
-.DEFAULT_GOAL = run
+.DEFAULT_GOAL = run-unsafe
 
 .SILENT :
 
@@ -21,12 +21,24 @@ so : $(BIN_SO)
 > $(eval PEEK_FLAG = Y)
 > @$(PEEK)
 
-.PHONY : run
-run : $(BIN_SO)
+.PHONY : run-unsafe
+run-unsafe : clean _UnsetMacro $(BIN_SO)
 > ./run.py
 
 $(BIN_SO) : *.c
-> $(CC) -Wall -g -shared -fPIC *.c -o $(BIN_SO)
+> $(CC) -Wall -g $(SAFE_MACRO) -shared -fPIC *.c -o $(BIN_SO)
+
+.PHONY : run-safe
+run-safe : clean _SetMacro $(BIN_SO)
+> ./run.py
+
+.PHONY : _SetMacro
+_SetMacro :
+> $(eval SAFE_MACRO = -DTHREAD_SAFE)
+
+.PHONY : _UnsetMacro
+_UnsetMacro :
+> $(eval SAFE_MACRO = -DNOTHING)
 
 .PHONY : clean
 clean :

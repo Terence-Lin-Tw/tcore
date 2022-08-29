@@ -1,33 +1,49 @@
 #!/usr/bin/python3
 
-import ctypes
+import sys, ctypes
+
+COMM_ENC = 'ascii'
 
 tclib = ctypes.CDLL('bin/tclib.so')
+tclib.get.restype = ctypes.c_char_p
 
-# # t = 'hello?'
-# # s = ctypes.c_char_p(  bytes(t, encoding='utf-8')  )
-# # r = tclib.str(s)
-# # print(r)
+buf = []
 
-# tclib.func(2)
-# tclib.func(4)
-# tclib.func(9)
+def _ToCStr(S):
+    cStr = ctypes.c_char_p(  bytes(S, COMM_ENC)  )
+    buf.append(cStr)
 
+    return cStr
 
+def _ToPyStr(S):
+    return S.decode(COMM_ENC)
 
-from threading import Thread
-from time import sleep
+def _Set(K, V):
+    kBytes = _ToCStr(K)
+    vBytes = _ToCStr(V)
 
-def increase():
-    for i in range(0, 20000):
-        tclib.increase()
+    tclib.set(kBytes, vBytes)
 
-threads = []
-for i in range(0, 400):
-    threads.append(Thread(target=increase))
-for thread in threads:
-    thread.start()
-for thread in threads:
-    thread.join()
+def _Get(K):
+    kBytes = _ToCStr(K)
+    v = tclib.get(kBytes)
 
-print(f'Final counter: {tclib.get_result()}')
+    return _ToPyStr(v)
+
+def main():
+    _Set('abc', '1234')
+    res = _Get('abc')
+    print(  '"{}"'.format(res)  )
+
+    res = _Get('abc!')
+    print(  '"{}"'.format(res)  )
+
+    _Set('abc', '')
+    res = _Get('abc')
+    print(  '"{}"'.format(res)  )
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)

@@ -26,7 +26,7 @@ so : $(BIN_SO)
 
 .PHONY : run
 run : $(BIN_SO)
-> ./run.py
+> ./py_run.py
 
 $(BIN_SO) : *.c
 > $(CC) -Wall -g -shared -fPIC *.c -o $(BIN_SO)

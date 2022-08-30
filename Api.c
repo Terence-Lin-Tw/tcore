@@ -30,7 +30,7 @@ void _InitStore(){
 
     // kvs_put(mStore, "abc", "123");
     // kvs_put(mStore, "ghi", "789");
-    // kvs_put(mStore, "def", "456");
+    //kvs_put(mStore, "def", "456");
 
     // int i = 0;
     // KVSpair *p;

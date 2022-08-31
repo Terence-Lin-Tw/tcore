@@ -1,6 +1,6 @@
 #include "Api.h"
 
-char EMPTY[8] = {'\0'};
+char EMPTY[1] = {'\0'};
 
 void set(char *K, char *V){
     if(!mStore) _InitStore();
@@ -11,7 +11,17 @@ void set(char *K, char *V){
         kvs_remove(mStore, K);
     }
 
-    kvs_put(mStore, K, V);
+    size_t kSz = strlen(K);
+    char *k = calloc(1, kSz + 1);
+    strcpy(k, K);
+
+    size_t vSz = strlen(V);
+    char *v = calloc(1, vSz + 1);
+    strcpy(v, V);
+
+    kvs_put(mStore, k, v);
+
+    //kvs_put(mStore, K, V);
 }
 
 char *get(char *K){

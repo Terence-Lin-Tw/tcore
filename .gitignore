@@ -7,5 +7,5 @@
 **/*.log
 **/bin/*
 
-.vscode/
+**/.vscode/*
 

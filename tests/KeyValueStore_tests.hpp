@@ -1,5 +1,5 @@
-#ifndef COMMON_TESTS_HPP
-#define COMMON_TESTS_HPP
+#ifndef _KEY_VALUE_STORE_TESTS_HPP_
+#define _KEY_VALUE_STORE_TESTS_HPP_
 
 extern "C" {
     #include "../KeyValueStore.h"

@@ -38,6 +38,8 @@ char *get(char *K){
 void _InitStore(){
     mStore = kvs_create(strcmp);
 
+    ping();
+
     // kvs_put(mStore, "abc", "123");
     // kvs_put(mStore, "ghi", "789");
     //kvs_put(mStore, "def", "456");

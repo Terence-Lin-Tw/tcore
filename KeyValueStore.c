@@ -1,75 +1,181 @@
 #include "KeyValueStore.h"
 
-void getTimestamp(char *pBuf){
-    time_t rawtime;
-    time(&rawtime);
+struct KVSstore {
+    KVSpair *pairs;
+    KVScompare *compare;
+    size_t length;
+    size_t space;
+};
 
-    struct tm *timeinfo = localtime(&rawtime);
+static const size_t kvs_pair_size = sizeof(KVSpair);
 
-    sprintf(pBuf, "---- %d.%02d.%02d %02d:%02d:%02d ----",
-            timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
-            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec  );
+static const size_t kvs_store_size = sizeof(KVSstore);
+
+static KVSpair *kvs_search(KVSstore *store, KVSkey *key, int exact){
+    KVSpair *pairs = store->pairs;
+    size_t lbound = 0;
+    size_t rbound = store->length;
+
+    while(lbound < rbound){
+        size_t index = lbound + ((rbound - lbound) >> 1);
+        KVSpair *element = pairs + index;
+        int result = store->compare(key, element->key);
+        if(result < 0){
+            rbound = index;
+        }else if(result > 0){
+            lbound = index + 1;
+        }else{
+            return element;
+        }
+    }
+
+    return exact ? NULL : pairs + lbound;
 }
 
-void printTimestamp(){
-    char buf[32];
-    getTimestamp(buf);
-    printf("%s\n\n", buf);
+static KVSpair *kvs_get_pair(KVSstore *store, KVSkey *key){
+    if((!store) || (!store->pairs)){
+        return NULL;
+    }
+
+    return kvs_search(store, key, 1);
 }
 
-void printShortTimestamp(){
-    char buf[32];
-    getTimestamp(buf);
-    printf("%s", buf);
+static void kvs_abort_if_null(void *pointer, const char *message){
+    if(pointer == NULL){
+        fprintf(stderr, "%s\n", message);
+        exit(-1);
+    }
 }
 
-void addressToHex(char *pBuf, uintptr_t Address){
-    if(  sizeof(uintptr_t) != 8  ){
-        sprintf(pBuf, "%s", "0xXXXX-XXXX-XXXX-XXXX");
-
+static void kvs_resize_pairs(KVSstore *store, size_t amount){
+    if(!store){
         return;
     }
 
-    sprintf(pBuf +  2, "%04lX", (Address & 0xFFFF000000000000) >> 48);
-    sprintf(pBuf +  7, "%04lX", (Address & 0x0000FFFF00000000) >> 32);
-    sprintf(pBuf + 12, "%04lX", (Address & 0x00000000FFFF0000) >> 16);
-    sprintf(pBuf + 17, "%04lX", (Address & 0x000000000000FFFF)      );
+    store->length += amount;
+    if(store->space > store->length){
+        return;
+    }
 
-    pBuf[ 0] = '0';
-    pBuf[ 1] = 'x';
-    pBuf[ 6] = '-';
-    pBuf[11] = '-';
-    pBuf[16] = '-';
+    store->space += KVS_SPACE_INCREMENT;
+    store->pairs = realloc(store->pairs, kvs_pair_size * store->space);
+    kvs_abort_if_null(store->pairs, "out of memory");
 }
 
-int str(char *pStr){
-    char* pBuff = calloc(1, 256);
+static size_t kvs_get_pair_index(KVSstore *store, KVSpair *pair){
+    if((!store) || (!pair)){
+        return -1;
+    }
 
-    strcpy(pBuff, pStr);
-
-    printf("'%s'\n", pBuff);
-    printf("'%d %d'\n", (int)pStr[0], (int)pStr[1]);
-
-    return 6;
+    return pair - store->pairs;
 }
 
-int mNum = -1;
-void func(int N){
-    printf("mNum = %d, N = %d, ", mNum, N);
-    mNum = N;
+static size_t kvs_get_bytes_from_pair(KVSstore *store, KVSpair *pair){
+    size_t pair_index;
+    if((!store) || (!pair)){
+        return 0;
+    }
 
-    printf("mNum = %d\n", mNum);
+    pair_index = kvs_get_pair_index(store, pair);
+
+    return (store->length - pair_index) * kvs_pair_size;
 }
 
-#include <pthread.h>
-pthread_mutex_t mCount_mutex;
+static void kvs_create_pair(KVSstore *store, KVSkey *key, KVSvalue *value){
+    KVSpair *pair;
+    if(!store){
+        return;
+    }
 
-int mCounter = 0;
-void increase(){
-    pthread_mutex_lock(&mCount_mutex);
-    mCounter = mCounter + 1;
-    pthread_mutex_unlock(&mCount_mutex);
+    pair = kvs_search(store, key, 0);
+    if(pair < store->pairs + store->length){
+        size_t bytes = kvs_get_bytes_from_pair(store, pair);
+        memmove(pair + 1, pair, bytes);
+    }
+
+    pair->key = key;
+    pair->value = value;
+    kvs_resize_pairs(store, +1);
 }
-int get_result(){
-    return mCounter;
+
+static void kvs_remove_pair(KVSstore *store, KVSpair *pair){
+    if((!store) || (!pair)){
+        return;
+    }
+
+    memmove(pair, pair + 1, kvs_get_bytes_from_pair(store, pair + 1));
+    kvs_resize_pairs(store, -1);
+}
+
+static int kvs_compare_pointers(const char *a, const char *b){
+    return a - b;
+}
+
+KVSstore *kvs_create(KVScompare compare){
+    KVSstore *store = malloc(kvs_store_size);
+    kvs_abort_if_null(store, "out of memory");
+
+    store->pairs = NULL;
+    store->length = 0;
+    store->space = 0;
+
+    if(compare){
+        store->compare = compare;
+    }else{
+        store->compare = kvs_compare_pointers;
+    }
+    kvs_resize_pairs(store, 0);
+
+    return store;
+}
+
+void kvs_destroy(KVSstore *store){
+    if(!store){
+        return;
+    }
+
+    if(store->pairs){
+        free(store->pairs);
+    }
+
+    free(store);
+}
+
+void kvs_put(KVSstore *store, KVSkey *key, void *value){
+    KVSpair *pair = kvs_get_pair(store, key);
+    if(pair){
+        if(value){
+            pair->value = value;
+        }else{
+            kvs_remove_pair(store, pair);
+        }
+    }else if(value){
+        kvs_create_pair(store, key, value);
+    }
+}
+
+KVSvalue *kvs_get(KVSstore *store, KVSkey *key){
+    KVSpair *pair = kvs_get_pair(store, key);
+
+    return pair ? pair->value : NULL;
+}
+
+void kvs_remove(KVSstore *store, KVSkey *key){
+    kvs_put(store, key, NULL);
+}
+
+size_t kvs_length(KVSstore *store){
+    if(!store){
+        return 0;
+    }
+
+    return store->length;
+}
+
+KVSpair *kvs_pair(KVSstore *store, size_t index){
+    if((!store) || (index < 0) || (index >= store->length)){
+        return NULL;
+    }
+
+    return store->pairs + index;
 }

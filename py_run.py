@@ -24,6 +24,8 @@ def _InitTcLib():
 
 def _ToCStr(S):
     cStr = ctypes.c_char_p(  bytes(S, COMM_ENC)  )
+
+    global mBuffer
     mBuffer.append(cStr)
 
     return cStr
@@ -49,19 +51,7 @@ def _CheckPairs(TcLib, D):
 
     return True
 
-def main():
-    tcLib = _InitTcLib()
-
-    from py_generateKeyValuePairs import _GenerateKeyValuePairs
-    d = _GenerateKeyValuePairs(1000000)
-    for k in d:
-        _Set(tcLib, k, d[k])
-
-    for _ in range(10):
-        check = _CheckPairs(tcLib, d)
-        print('{}'.format('Equal' if check else 'Not equal'))
-
-    # clear
+def _ClearBuffer():
     global mBuffer
     if CLEAR_BUFFER: mBuffer.clear()
     mBuffer = None
@@ -69,6 +59,29 @@ def main():
 
     import gc
     gc.collect()
+
+    mBuffer = []
+
+def main():
+    tcLib = _InitTcLib()
+
+    from py_generateKeyValuePairs import _GenerateKeyValuePairs
+    print('Generating one million key value pairs...')
+    d = _GenerateKeyValuePairs(1000000)
+    for k in d:
+        _Set(tcLib, k, d[k])
+
+    k = list(d.keys())[0]
+    v = d[k]
+    print('{}  {}'.format(k, v))
+
+    _ClearBuffer()
+
+    for _ in range(10):
+        check = _CheckPairs(tcLib, d)
+        _ClearBuffer()
+
+        print('{}'.format('Equal' if check else 'Not equal'))
 
 if __name__ == '__main__':
     try:

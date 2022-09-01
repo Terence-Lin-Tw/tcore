@@ -1,5 +1,5 @@
-#ifndef API_H
-#define API_H
+#ifndef _API_H_
+#define _API_H_
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,9 +7,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kvs.h"
+#include "KeyValueStore.h"
+#include "Cache.h"
 
 KVSstore *mStore;
+
 char EMPTY[];
 
 void _InitStore();

@@ -1,5 +1,5 @@
-#ifndef INCREASECOUNTER_H
-#define INCREASECOUNTER_H
+#ifndef _INCREASECOUNTER_H_
+#define _INCREASECOUNTER_H_
 
 #include <pthread.h>
 
